@@ -43,10 +43,15 @@ object Option:
     if xs.isEmpty then None
     else Some(xs.sum / xs.length)
 
-  def variance(xs: Seq[Double]): Option[Double] = ???
+  def variance(xs: Seq[Double]): Option[Double] = mean(xs).map(a => xs.map(b => math.pow(b-a,2))).flatMap(mean)
 
-  def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] = ???
+  def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] = a.flatMap(x => b.map(f(x,_)))
 
-  def sequence[A](as: List[Option[A]]): Option[List[A]] = ???
+  def sequence[A](as: List[Option[A]]): Option[List[A]] = traverse(as)(a => a)
 
-  def traverse[A, B](as: List[A])(f: A => Option[B]): Option[List[B]] = ???
+  def traverse[A, B](as: List[A])(f: A => Option[B]): Option[List[B]] = 
+    def go(as: List[A], acc: List[B]): Option[List[B]] = 
+      as match
+        case x::xs => f(x).flatMap(a => go(xs,a::acc))
+        case _ => Some(acc.reverse)
+    go(as, Nil)
