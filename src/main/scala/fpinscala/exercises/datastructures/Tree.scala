@@ -36,7 +36,7 @@ object Tree:
     case Leaf(_) => 1
     case Branch(l,r) => 1 + size(l) + size(r)
 
-  extension (t: Tree[Int]) def firstPositive: Option[Int] = 
+  extension (t: Tree[Int]) def firstPositive: Option[Int] =
     t match
       case Leaf(i) => if i>0 then Some(i) else None
       case Branch(l, r) => l.firstPositive orElse r.firstPositive
