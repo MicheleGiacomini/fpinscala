@@ -7,12 +7,19 @@ import fpinscala.exercises.common.Common.*
 import fpinscala.exercises.common.PropSuite
 import fpinscala.exercises.gettingstarted.MyProgram.factorial
 import fpinscala.exercises.gettingstarted.MyProgram.fib
-import fpinscala.exercises.gettingstarted.PolymorphicFunctions.{compose, curry, isSorted, uncurry}
+import fpinscala.exercises.gettingstarted.PolymorphicFunctions.{
+  compose,
+  curry,
+  isSorted,
+  uncurry
+}
 
 class GettingStartedSuite extends PropSuite:
-  private lazy val mulCurry: Int => Int => Int = curry[Int, Int, Int]((a: Int, b: Int) => a * b)
+  private lazy val mulCurry: Int => Int => Int =
+    curry[Int, Int, Int]((a: Int, b: Int) => a * b)
 
-  private lazy val mulUncurry: (Int, Int) => Int = uncurry[Int, Int, Int]((a: Int) => (b: Int) => a * b)
+  private lazy val mulUncurry: (Int, Int) => Int =
+    uncurry[Int, Int, Int]((a: Int) => (b: Int) => a * b)
 
   private val genSortedArray: Gen[Array[Int]] =
     genList(genShortNumber).map(_.sorted.toArray)
@@ -34,11 +41,14 @@ class GettingStartedSuite extends PropSuite:
     assertEquals(fib(i), theFirst21FibonacciNumbers(i))
   }
 
-  test("PolymorphicFunctions.isSorted for sorted array case")(genSortedArray) { array =>
-    assert(isSorted[Int](array, _ > _))
+  test("PolymorphicFunctions.isSorted for sorted array case")(genSortedArray) {
+    array =>
+      assert(isSorted[Int](array, _ > _))
   }
 
-  test("PolymorphicFunctions.isSorted for unsorted array case")(genUnsortedArray) { array =>
+  test("PolymorphicFunctions.isSorted for unsorted array case")(
+    genUnsortedArray
+  ) { array =>
     assert(!isSorted[Int](array, _ > _))
   }
 

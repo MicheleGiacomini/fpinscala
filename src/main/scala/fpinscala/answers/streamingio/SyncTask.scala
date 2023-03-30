@@ -27,4 +27,3 @@ object SyncTask:
 
       def attempt: SyncTask[Try[A]] =
         self.map(t => Success(t))
-    

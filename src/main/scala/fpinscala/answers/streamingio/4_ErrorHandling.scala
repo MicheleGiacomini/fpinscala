@@ -12,21 +12,22 @@ object ErrorHandling:
     case Result[+R](result: R) extends Pull[Nothing, Nothing, R]
     case Output[+O](value: O) extends Pull[Nothing, O, Unit]
     case Eval[+F[_], R](action: F[R]) extends Pull[F, Nothing, R]
-    case FlatMap[+F[_], X, +O, +R](
-      source: Pull[F, O, X], f: X => Pull[F, O, R]) extends Pull[F, O, R]
+    case FlatMap[+F[_], X, +O, +R](source: Pull[F, O, X], f: X => Pull[F, O, R])
+        extends Pull[F, O, R]
     case Uncons[+F[_], +O, +R](source: Pull[F, O, R])
-      extends Pull[F, Nothing, Either[R, (O, Pull[F, O, R])]]
+        extends Pull[F, Nothing, Either[R, (O, Pull[F, O, R])]]
     case Handle[+F[_], +O, +R](
-      source: Pull[F, O, R], handler: Throwable => Pull[F, O, R])
-      extends Pull[F, O, R]
+        source: Pull[F, O, R],
+        handler: Throwable => Pull[F, O, R]
+    ) extends Pull[F, O, R]
     case Error(t: Throwable) extends Pull[Nothing, Nothing, Nothing]
 
-    def step[F2[x] >: F[x], O2 >: O, R2 >: R](
-      using F: MonadThrow[F2]
+    def step[F2[x] >: F[x], O2 >: O, R2 >: R](using
+        F: MonadThrow[F2]
     ): F2[Either[R2, (O2, Pull[F2, O2, R2])]] =
       this match
-        case Result(r) => F.unit(Left(r))
-        case Output(o) => F.unit(Right(o, Pull.done))
+        case Result(r)    => F.unit(Left(r))
+        case Output(o)    => F.unit(Right(o, Pull.done))
         case Eval(action) => action.map(Left(_))
         case Uncons(source) =>
           source.step.map(s => Left(s.asInstanceOf[R2]))
@@ -35,35 +36,42 @@ object ErrorHandling:
             case Handle(s2, g) =>
               s2.handleErrorWith(x => g(x).handleErrorWith(y => f(y))).step
             case other =>
-              other.step.map {
-                case Right((hd, tl)) => Right((hd, Handle(tl, f)))
-                case Left(r) => Left(r)
-              }.handleErrorWith(t => f(t).step)
+              other.step
+                .map {
+                  case Right((hd, tl)) => Right((hd, Handle(tl, f)))
+                  case Left(r)         => Left(r)
+                }
+                .handleErrorWith(t => f(t).step)
         case Error(t) => F.raiseError(t)
-        case FlatMap(source, f) => 
+        case FlatMap(source, f) =>
           source match
             case FlatMap(s2, g) =>
               s2.flatMap(x => g(x).flatMap(y => f(y))).step
-            case other => other.step.flatMap {
-              case Left(r) => f(r).step
-              case Right((hd, tl)) => F.unit(Right((hd, tl.flatMap(f))))
-            }
+            case other =>
+              other.step.flatMap {
+                case Left(r)         => f(r).step
+                case Right((hd, tl)) => F.unit(Right((hd, tl.flatMap(f))))
+              }
 
-    def fold[F2[x] >: F[x], R2 >: R, A](init: A)(f: (A, O) => A)(
-      using F: MonadThrow[F2]
-    ): F2[(R2, A)] = 
+    def fold[F2[x] >: F[x], R2 >: R, A](init: A)(f: (A, O) => A)(using
+        F: MonadThrow[F2]
+    ): F2[(R2, A)] =
       step.flatMap {
-        case Left(r) => F.unit((r, init))
+        case Left(r)         => F.unit((r, init))
         case Right((hd, tl)) => tl.fold(f(init, hd))(f)
       }
 
     def toList[F2[x] >: F[x]: MonadThrow, O2 >: O]: F2[List[O2]] =
       fold(List.newBuilder[O])((bldr, o) => bldr += o).map(_(1).result)
 
-    def flatMap[F2[x] >: F[x], O2 >: O, R2](f: R => Pull[F2, O2, R2]): Pull[F2, O2, R2] =
+    def flatMap[F2[x] >: F[x], O2 >: O, R2](
+        f: R => Pull[F2, O2, R2]
+    ): Pull[F2, O2, R2] =
       FlatMap(this, f)
 
-    def >>[F2[x] >: F[x], O2 >: O, R2](next: => Pull[F2, O2, R2]): Pull[F2, O2, R2] =
+    def >>[F2[x] >: F[x], O2 >: O, R2](
+        next: => Pull[F2, O2, R2]
+    ): Pull[F2, O2, R2] =
       flatMap(_ => next)
 
     def map[R2](f: R => R2): Pull[F, O, R2] =
@@ -77,10 +85,11 @@ object ErrorHandling:
 
     def take(n: Int): Pull[F, O, Option[R]] =
       if n <= 0 then Result(None)
-      else uncons.flatMap {
-        case Left(r) => Result(Some(r))
-        case Right((hd, tl)) => Output(hd) >> tl.take(n - 1)
-      }
+      else
+        uncons.flatMap {
+          case Left(r)         => Result(Some(r))
+          case Right((hd, tl)) => Output(hd) >> tl.take(n - 1)
+        }
 
     def takeWhile(f: O => Boolean): Pull[F, O, Pull[F, O, R]] =
       uncons.flatMap {
@@ -100,7 +109,7 @@ object ErrorHandling:
 
     def mapOutput[O2](f: O => O2): Pull[F, O2, R] =
       uncons.flatMap {
-        case Left(r) => Result(r)
+        case Left(r)         => Result(r)
         case Right((hd, tl)) => Output(f(hd)) >> tl.mapOutput(f)
       }
 
@@ -131,7 +140,9 @@ object ErrorHandling:
         }
       Output(m.empty) >> go(m.empty, this)
 
-    def mapAccumulate[S, O2](init: S)(f: (S, O) => (S, O2)): Pull[F, O2, (S, R)] =
+    def mapAccumulate[S, O2](
+        init: S
+    )(f: (S, O) => (S, O2)): Pull[F, O2, (S, R)] =
       uncons.flatMap {
         case Left(r) => Result((init, r))
         case Right((hd, tl)) =>
@@ -139,7 +150,9 @@ object ErrorHandling:
           Output(out) >> tl.mapAccumulate(s)(f)
       }
 
-    def handleErrorWith[F2[x] >: F[x], O2 >: O, R2 >: R](handler: Throwable => Pull[F2, O2, R2]): Pull[F2, O2, R2] =
+    def handleErrorWith[F2[x] >: F[x], O2 >: O, R2 >: R](
+        handler: Throwable => Pull[F2, O2, R2]
+    ): Pull[F2, O2, R2] =
       Pull.Handle(this, handler)
 
   object Pull:
@@ -148,22 +161,28 @@ object ErrorHandling:
 
     def unfold[O, R](init: R)(f: R => Either[R, (O, R)]): Pull[Nothing1, O, R] =
       f(init) match
-        case Left(r) => Result(r)
+        case Left(r)        => Result(r)
         case Right((o, r2)) => Output(o) >> unfold(r2)(f)
 
-    def unfoldEval[F[_], O, R](init: R)(f: R => F[Either[R, (O, R)]]): Pull[F, O, R] =
+    def unfoldEval[F[_], O, R](
+        init: R
+    )(f: R => F[Either[R, (O, R)]]): Pull[F, O, R] =
       Pull.Eval(f(init)).flatMap {
-        case Left(r) => Result(r)
+        case Left(r)        => Result(r)
         case Right((o, r2)) => Output(o) >> unfoldEval(r2)(f)
       }
 
     extension [F[_], R](self: Pull[F, Int, R])
       def slidingMean(n: Int): Pull[F, Double, R] =
-        def go(window: collection.immutable.Queue[Int], p: Pull[F, Int, R]): Pull[F, Double, R] =
+        def go(
+            window: collection.immutable.Queue[Int],
+            p: Pull[F, Int, R]
+        ): Pull[F, Double, R] =
           p.uncons.flatMap {
             case Left(r) => Result(r)
             case Right((hd, tl)) =>
-              val newWindow = if window.size < n then window :+ hd else window.tail :+ hd
+              val newWindow =
+                if window.size < n then window :+ hd else window.tail :+ hd
               val meanOfNewWindow = newWindow.sum / newWindow.size.toDouble
               Output(meanOfNewWindow) >> go(newWindow, tl)
           }
@@ -197,13 +216,13 @@ object ErrorHandling:
 
     def fromList[O](os: List[O]): Stream[Nothing1, O] =
       os match
-        case Nil => Pull.done
+        case Nil      => Pull.done
         case hd :: tl => Pull.Output(hd) >> fromList(tl)
 
     def fromLazyList[O](os: LazyList[O]): Stream[Nothing1, O] =
       os match
         case LazyList() => Pull.done
-        case hd #:: tl => Pull.Output(hd) >> fromLazyList(tl)
+        case hd #:: tl  => Pull.Output(hd) >> fromLazyList(tl)
 
     def unfold[O, R](init: R)(f: R => Option[(O, R)]): Stream[Nothing1, O] =
       Pull.unfold(init)(r => f(r).toRight(r)).void
@@ -217,21 +236,24 @@ object ErrorHandling:
     def eval[F[_], O](fo: F[O]): Stream[F, O] =
       Pull.Eval(fo).flatMap(Pull.Output(_))
 
-    def unfoldEval[F[_], O, R](init: R)(f: R => F[Option[(O, R)]]): Stream[F, O] =
+    def unfoldEval[F[_], O, R](
+        init: R
+    )(f: R => F[Option[(O, R)]]): Stream[F, O] =
       Pull.Eval(f(init)).flatMap {
-        case None => Stream.empty
+        case None         => Stream.empty
         case Some((o, r)) => Pull.Output(o) ++ unfoldEval(r)(f)
       }
 
     def fromIterator[O](itr: Iterator[O]): Stream[Nothing1, O] =
-      if itr.hasNext then Pull.Output(itr.next) >> fromIterator(itr) else Pull.done
+      if itr.hasNext then Pull.Output(itr.next) >> fromIterator(itr)
+      else Pull.done
 
     def raiseError[F[_], O](t: Throwable): Stream[F, O] = Pull.Error(t)
 
     extension [F[_], O](self: Stream[F, O])
       def toPull: Pull[F, O, Unit] = self
 
-      def fold[A](init: A)(f: (A, O) => A)(using MonadThrow[F]): F[A] = 
+      def fold[A](init: A)(f: (A, O) => A)(using MonadThrow[F]): F[A] =
         self.fold(init)(f).map(_(1))
 
       def toList(using MonadThrow[F]): F[List[O]] =
@@ -265,7 +287,7 @@ object ErrorHandling:
         self.flatMapOutput(o => Stream.empty)
 
     extension [O](self: Stream[Nothing, O])
-      def fold[A](init: A)(f: (A, O) => A): A = 
+      def fold[A](init: A)(f: (A, O) => A): A =
         (self: Stream[SyncTask, O]).fold(init)(f).resultOrThrow(1)
 
       def toList: List[O] =
@@ -290,13 +312,17 @@ object ErrorHandlingExample:
     Task(Source.fromFile(path))
 
   def use(source: Source): Stream[Task, Unit] =
-    Stream.eval(Task(source.getLines))
+    Stream
+      .eval(Task(source.getLines))
       .flatMap(itr => Stream.fromIterator(itr))
       .mapEval(line => Task(println(line)))
 
   def release(source: Source): Task[Unit] =
     Task(source.close())
 
-  val prg: Stream[Task, Unit] = 
-    Stream.eval(acquire("build.sbt")).flatMap(resource =>
-      use(resource).onComplete(Stream.eval(release(resource))))
+  val prg: Stream[Task, Unit] =
+    Stream
+      .eval(acquire("build.sbt"))
+      .flatMap(resource =>
+        use(resource).onComplete(Stream.eval(release(resource)))
+      )

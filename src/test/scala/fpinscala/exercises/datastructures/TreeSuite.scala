@@ -23,11 +23,17 @@ class TreeSuite extends PropSuite:
   }
 
   test("Tree.map")(genIntTree) { tree =>
-    assertEquals(toScalaList(tree.map(_.toString)), toScalaList(tree).map(_.map(_.toString)))
+    assertEquals(
+      toScalaList(tree.map(_.toString)),
+      toScalaList(tree).map(_.map(_.toString))
+    )
   }
 
   test("Tree.fold")(genIntTree) { tree =>
-    assertEquals(tree.fold(_.toString, _ + _), toScalaList(tree).flatMap(_.map(_.toString)).mkString)
+    assertEquals(
+      tree.fold(_.toString, _ + _),
+      toScalaList(tree).flatMap(_.map(_.toString)).mkString
+    )
   }
 
   test("Tree.sizeViaFold")(genIntTree) { tree =>
@@ -36,12 +42,16 @@ class TreeSuite extends PropSuite:
 
   test("Tree.depthViaFold")(genIntTree) { tree =>
     tree match
-      case Leaf(_)      => assertEquals(tree.depthViaFold, 0)
-      case Branch(l, r) => assertEquals(tree.depthViaFold, 1 + l.depthViaFold.max(r.depthViaFold))
+      case Leaf(_) => assertEquals(tree.depthViaFold, 0)
+      case Branch(l, r) =>
+        assertEquals(tree.depthViaFold, 1 + l.depthViaFold.max(r.depthViaFold))
   }
 
   test("Tree.mapViaFold")(genIntTree) { tree =>
-    assertEquals(toScalaList(tree.mapViaFold(_.toString)), toScalaList(tree).map(_.map(_.toString)))
+    assertEquals(
+      toScalaList(tree.mapViaFold(_.toString)),
+      toScalaList(tree).map(_.map(_.toString))
+    )
   }
 
   test("size(tree)")(genIntTree) { tree =>
@@ -50,7 +60,10 @@ class TreeSuite extends PropSuite:
 
   test("Tree.firstPositive")(genIntTree) { tree =>
     val t = toScalaList(tree)
-    assertEquals(tree.firstPositive, t.flatten.find(_ > 0).getOrElse(t.last.get))
+    assertEquals(
+      tree.firstPositive,
+      t.flatten.find(_ > 0).getOrElse(t.last.get)
+    )
   }
 
   test("Tree.maximum")(genIntTree) { tree =>

@@ -32,7 +32,9 @@ class LazyListSuite extends PropSuite:
   }
 
   test("LazyList.cons") {
-    genLazyList.map(tail => (LazyList.cons(Random.nextInt, tail), Cons(Random.nextInt, () => tail)))
+    genLazyList.map(tail =>
+      (LazyList.cons(Random.nextInt, tail), Cons(Random.nextInt, () => tail))
+    )
   } { (smartConstructor, oldConstructor) =>
     assertEquals(smartConstructor.headOption, smartConstructor.headOption)
     assertNotEquals(oldConstructor.headOption, oldConstructor.headOption)
@@ -51,7 +53,10 @@ class LazyListSuite extends PropSuite:
   }
 
   test("LazyList.takeWhile")(genSmallInt ** genLazyList) { case n ** lazyList =>
-    assertEquals(lazyList.takeWhile(_ != n).toList, lazyList.toList.takeWhile(_ != n))
+    assertEquals(
+      lazyList.takeWhile(_ != n).toList,
+      lazyList.toList.takeWhile(_ != n)
+    )
   }
 
   test("LazyList.forAll")(genSmallInt ** genLazyList) { case n ** lazyList =>
@@ -99,7 +104,10 @@ class LazyListSuite extends PropSuite:
   }
 
   test("LazyList.fibsViaUnfold")(genLengthOfFibonacciSeq) { n =>
-    assertEquals(fibsViaUnfold.take(n).toList, theFirst21FibonacciNumbers.take(n).toList)
+    assertEquals(
+      fibsViaUnfold.take(n).toList,
+      theFirst21FibonacciNumbers.take(n).toList
+    )
   }
 
   test("LazyList.fromViaUnfold")(genMidInt ** genMidInt) { case n ** a =>
@@ -136,10 +144,14 @@ class LazyListSuite extends PropSuite:
   }
    */
 
-  test("LazyList.startsWith")(genLazyList ** genLazyList) { case list1 ** list2 =>
-    assertEquals(list1.startsWith(list2), list1.toList.startsWith(list2.toList))
-    assert(list1.startsWith(empty))
-    assert(list1.startsWith(list1))
+  test("LazyList.startsWith")(genLazyList ** genLazyList) {
+    case list1 ** list2 =>
+      assertEquals(
+        list1.startsWith(list2),
+        list1.toList.startsWith(list2.toList)
+      )
+      assert(list1.startsWith(empty))
+      assert(list1.startsWith(list1))
   }
 
 /*
