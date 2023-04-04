@@ -49,10 +49,21 @@ object Option:
     else Some(xs.sum / xs.length)
 
   def variance(xs: Seq[Double]): Option[Double] =
-    mean(xs).flatMap(m => mean(xs.map(x => math.pow(x - m, 2))))
+    (
+      for
+        m <- mean(xs)
+        ys = xs.map(x => math.pow(x - m, 2))
+        v <- mean(ys)
+      yield v
+    )
+    // mean(xs).flatMap(m => mean(xs.map(x => math.pow(x - m, 2))))
 
   def map2[A, B, C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] =
-    a.flatMap(aa => b.map(bb => f(aa, bb)))
+    for
+      aa <- a
+      bb <- b
+    yield f(aa, bb)
+    // a.flatMap(aa => b.map(bb => f(aa, bb)))
 
   def sequence[A](as: List[Option[A]]): Option[List[A]] =
     as.foldRight(Some(Nil): Option[List[A]])((a, acc) => map2(a, acc)(_ :: _))
